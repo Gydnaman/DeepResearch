@@ -1,0 +1,20 @@
+import type { components } from './generated'
+
+type ApiSchemas = components['schemas']
+
+export type RunStatus = ApiSchemas['RunStatus']
+export type OutputFormat = ApiSchemas['OutputFormat']
+export type Sources = ApiSchemas['ResearchSources']
+export type RunBudgets = ApiSchemas['RunBudgets']
+export type RunSummary = ApiSchemas['ResearchRunSummary']
+export type PlanStep = ApiSchemas['PlanStep']
+export type Plan = ApiSchemas['Plan']
+export type SearchTask = ApiSchemas['SearchTask']
+export type Evidence = ApiSchemas['Evidence']
+export type Citation = ApiSchemas['Citation']
+export type ReportSection = ApiSchemas['ReportSection']
+export type Report = ApiSchemas['Report']
+export type ResearchEvent = ApiSchemas['ResearchEvent']
+export type ProviderStatus = ApiSchemas['ProviderStatus']
+export type RunPage = ApiSchemas['RunList']
+export type CreateRunBody = ApiSchemas['ResearchRunCreate']

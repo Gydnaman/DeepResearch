@@ -1,0 +1,25 @@
+.env
+.env.*.local
+# Local-only agent and BMAD workflow installations; project artifacts live in _bmad-output/.
+.agents/
+_bmad/
+_bmad-output/**/.memlog.md
+.npm-cache/
+.uv-cache/
+backend/.venv/
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/__pycache__/
+backend/src/**/__pycache__/
+backend/tests/**/__pycache__/
+backend/.alembic-gen.db
+backend/.tmp-review.db
+outputs/review-pytest-tmp-20260924/
+outputs/test_*/
+outputs/test-*/
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+*.py[cod]
+*.sqlite
+*.sqlite3
