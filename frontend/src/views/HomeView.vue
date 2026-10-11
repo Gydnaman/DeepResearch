@@ -3,10 +3,14 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useResearchStore } from '@/stores/research'
 import type { CreateRunBody, OutputFormat } from '@/api/types'
+import { onboardingSession } from './onboardingSession'
 
 const research = useResearchStore()
 const route = useRoute()
 const router = useRouter()
+const onboardingStorageKey = 'deepresearch.onboarding.dismissed.v1'
+const onboardingVisible = ref(false)
+let onboardingReady = false
 const topic = ref('')
 const dimensionsText = ref('成本, 可靠性, 部署条件')
 const outputFormat = ref<OutputFormat>('narrative')
@@ -97,10 +101,43 @@ function openEvidence(id: string) {
   research.jumpToEvidence(id)
 }
 
+function maybeShowOnboarding() {
+  if (!onboardingReady || route.name !== 'home') return
+  if (onboardingSession.dismissed) {
+    onboardingVisible.value = false
+    return
+  }
+  try {
+    onboardingVisible.value = window.localStorage.getItem(onboardingStorageKey) !== 'true'
+  } catch {
+    onboardingVisible.value = true
+  }
+}
+
+function dismissOnboarding() {
+  onboardingSession.dismissed = true
+  onboardingVisible.value = false
+  try {
+    window.localStorage.setItem(onboardingStorageKey, 'true')
+  } catch {
+    // Keep the guide dismissible for this visit if browser storage is unavailable.
+  }
+}
+
+function focusTopic() {
+  const field = document.getElementById('topic')
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  field?.scrollIntoView?.({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'center' })
+  field?.focus()
+}
+
 onMounted(() => {
+  onboardingReady = true
+  maybeShowOnboarding()
   const runId = route.params.id
   if (typeof runId === 'string') void research.openRun(runId)
 })
+watch(() => route.name, maybeShowOnboarding)
 watch(() => route.params.id, (id) => {
   if (typeof id === 'string' && id !== research.currentRun?.run_id) void research.openRun(id)
   else if (typeof id !== 'string' && research.currentRun) research.resetCurrent()
@@ -122,6 +159,19 @@ watch(() => route.params.id, (id) => {
       <span class="error-mark" aria-hidden="true">!</span><span>{{ formError || research.error }}</span>
       <button type="button" class="icon-button" aria-label="关闭错误提示" @click="formError = ''; research.error = ''">×</button>
     </div>
+
+    <section v-if="onboardingVisible && route.name === 'home' && !research.currentRun" class="onboarding-card" aria-labelledby="onboarding-title">
+      <div class="onboarding-card-heading">
+        <div><p class="onboarding-kicker">快速上手 · 三步</p><h2 id="onboarding-title">从主题到可检查的演示报告</h2><p class="onboarding-intro">按顺序填写主题、确认计划，再检查事件、证据和引用。你也可以直接开始填写。</p></div>
+        <button class="onboarding-dismiss" type="button" @click="dismissOnboarding">关闭引导</button>
+      </div>
+      <ol class="onboarding-steps">
+        <li><span class="onboarding-step-number" aria-hidden="true">01</span><div><h3>填写研究主题</h3><p>描述要回答的问题，并按需调整来源、关注维度和报告结构。来源选项对应固定演示样本。</p></div></li>
+        <li><span class="onboarding-step-number" aria-hidden="true">02</span><div><h3>检查计划并开始</h3><p>生成计划后，先查看问题、步骤和来源任务；确认后再启动运行。</p></div></li>
+        <li><span class="onboarding-step-number" aria-hidden="true">03</span><div><h3>检查证据与引用</h3><p>查看运行事件、证据池和报告。点击报告中的引用编号可定位到对应证据。</p></div></li>
+      </ol>
+      <div class="onboarding-card-footer"><p><strong>Mock 演示：</strong>不会访问真实 Web、模型服务或本地语料；报告不是经过真实来源验证的研究结论。</p><button class="onboarding-start" type="button" @click="focusTopic">开始填写主题</button></div>
+    </section>
 
     <section id="composer" class="panel composer-panel" aria-labelledby="composer-title">
       <div class="panel-heading">

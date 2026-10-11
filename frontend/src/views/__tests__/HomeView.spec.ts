@@ -1,9 +1,12 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useResearchStore } from '@/stores/research'
 import HomeView from '../HomeView.vue'
+import { onboardingSession } from '../onboardingSession'
+
+const onboardingStorageKey = 'deepresearch.onboarding.dismissed.v1'
 
 async function renderHome() {
   const router = createRouter({
@@ -22,7 +25,8 @@ async function renderHome() {
   return { wrapper, research, router }
 }
 
-afterEach(() => { document.body.innerHTML = '' })
+beforeEach(() => { onboardingSession.dismissed = false; localStorage.removeItem(onboardingStorageKey) })
+afterEach(() => { onboardingSession.dismissed = false; vi.restoreAllMocks(); localStorage.removeItem(onboardingStorageKey); document.body.innerHTML = '' })
 
 describe('research task form', () => {
   it('explains that a topic is required before submission', async () => {
@@ -151,5 +155,41 @@ describe('research task form', () => {
     const { wrapper } = await renderHome()
 
     expect(wrapper.find('#providers').classes()).toContain('provider-strip')
+  })
+
+  it('keeps the onboarding guide dismissed across remounts when browser storage is unavailable', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('storage unavailable') })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('storage unavailable') })
+
+    const firstVisit = await renderHome()
+    expect(firstVisit.wrapper.find('.onboarding-card').exists()).toBe(true)
+    await firstVisit.wrapper.find('.onboarding-dismiss').trigger('click')
+    firstVisit.wrapper.unmount()
+
+    const returnVisit = await renderHome()
+    expect(returnVisit.wrapper.find('.onboarding-card').exists()).toBe(false)
+    returnVisit.wrapper.unmount()
+  })
+
+  it('persists onboarding dismissal in localStorage across remounts', async () => {
+    const firstVisit = await renderHome()
+    expect(firstVisit.wrapper.find('.onboarding-card').exists()).toBe(true)
+
+    await firstVisit.wrapper.find('.onboarding-dismiss').trigger('click')
+    expect(localStorage.getItem(onboardingStorageKey)).toBe('true')
+    firstVisit.wrapper.unmount()
+
+    onboardingSession.dismissed = false
+    const returnVisit = await renderHome()
+    expect(returnVisit.wrapper.find('.onboarding-card').exists()).toBe(false)
+    returnVisit.wrapper.unmount()
+  })
+
+  it('focuses the topic field when starting from the onboarding guide', async () => {
+    const { wrapper } = await renderHome()
+
+    await wrapper.find('.onboarding-start').trigger('click')
+
+    expect(wrapper.find('#topic').element).toBe(document.activeElement)
   })
 })

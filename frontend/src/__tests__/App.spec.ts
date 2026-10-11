@@ -76,4 +76,82 @@ describe('workbench navigation', () => {
     expect(historyButton.attributes('aria-expanded')).toBe('true')
     expect(wrapper.find('.sidebar-history').classes()).toContain('mobile-open')
   })
+
+  it('closes the usage guide on Escape and restores focus to its trigger', async () => {
+    const showModalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal')
+    const closeDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close')
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+      configurable: true,
+      value: function (this: HTMLDialogElement) { this.setAttribute('open', '') },
+    })
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+      configurable: true,
+      value: function (this: HTMLDialogElement) { this.removeAttribute('open') },
+    })
+    const restoreDialogMethods = () => {
+      if (showModalDescriptor) Object.defineProperty(HTMLDialogElement.prototype, 'showModal', showModalDescriptor)
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal')
+      if (closeDescriptor) Object.defineProperty(HTMLDialogElement.prototype, 'close', closeDescriptor)
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, 'close')
+    }
+
+    let unmount: (() => void) | undefined
+    try {
+      const { wrapper } = await renderApp()
+      unmount = () => wrapper.unmount()
+      const trigger = wrapper.find('.usage-guide-trigger')
+      const dialog = wrapper.find('dialog.usage-dialog')
+      trigger.element.focus()
+      expect(document.activeElement).toBe(trigger.element)
+      await trigger.trigger('click')
+      expect((dialog.element as HTMLDialogElement).open).toBe(true)
+
+      // Native dialogs dispatch `cancel` when Escape is pressed.
+      dialog.element.dispatchEvent(new Event('cancel', { bubbles: true, cancelable: true }))
+
+      expect((dialog.element as HTMLDialogElement).open).toBe(false)
+      expect(document.activeElement).toBe(trigger.element)
+    } finally {
+      unmount?.()
+      restoreDialogMethods()
+    }
+  })
+
+  it('closes the usage guide with its close button and restores focus to its trigger', async () => {
+    const showModalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal')
+    const closeDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close')
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+      configurable: true,
+      value: function (this: HTMLDialogElement) { this.setAttribute('open', '') },
+    })
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+      configurable: true,
+      value: function (this: HTMLDialogElement) { this.removeAttribute('open') },
+    })
+    const restoreDialogMethods = () => {
+      if (showModalDescriptor) Object.defineProperty(HTMLDialogElement.prototype, 'showModal', showModalDescriptor)
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal')
+      if (closeDescriptor) Object.defineProperty(HTMLDialogElement.prototype, 'close', closeDescriptor)
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, 'close')
+    }
+
+    let unmount: (() => void) | undefined
+    try {
+      const { wrapper } = await renderApp()
+      unmount = () => wrapper.unmount()
+      const trigger = wrapper.find('.usage-guide-trigger')
+      const dialog = wrapper.find('dialog.usage-dialog')
+      trigger.element.focus()
+      await trigger.trigger('click')
+      expect((dialog.element as HTMLDialogElement).open).toBe(true)
+
+      await wrapper.find('.usage-dialog-close').trigger('click')
+
+      expect((dialog.element as HTMLDialogElement).open).toBe(false)
+      expect(document.activeElement).toBe(trigger.element)
+    } finally {
+      unmount?.()
+      restoreDialogMethods()
+    }
+  })
 })
